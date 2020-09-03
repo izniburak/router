@@ -1,0 +1,67 @@
+#!/usr/bin/php
+<?php
+
+$commands = [
+    'make' => [
+        'controller',
+        'middleware',
+    ]
+];
+
+$commandOption = null;
+foreach ($argv as $arg) {
+    foreach (array_keys($commands) as $command) {
+        if (strpos($arg, $command . ':') === 0) {
+            $commandOption = explode($command . ':', $arg)[1];
+            break;
+        }
+    }
+}
+
+if (!$commandOption || !in_array($commandOption, $commands[$command])) {
+    echo 'Options:' . PHP_EOL;
+    echo '  make:controller  Create a new Controller' . PHP_EOL;
+    echo '  make:middleware  Create a new Middleware' . PHP_EOL;
+
+    exit;
+}
+
+if ($command == 'make') {
+    $defaulDirectory = explode('/vendor/', getcwd())[0] . '/' . ucfirst($commandOption) . 's';
+    $directory = readline('Enter the target directory [' . $defaulDirectory . ']:') ?: $defaulDirectory;
+
+    if (!is_dir($directory)) {
+        echo PHP_EOL . 'ERROR: ' . 'The specified directory does not exist!' . PHP_EOL;
+        
+        exit;
+    }
+
+
+    $className = readline("Enter the {$commandOption} name:");
+
+    $defaulNamespace = ucfirst($commandOption) . 's';
+    $namespace = readline('Enter the target namespace [' . $defaulNamespace . ']:') ?: $defaulNamespace;
+
+    try {
+        ob_start();
+        echo '<?php';
+        include __DIR__ . '/../src/Template/' . ucfirst($commandOption) . 'Template.php';
+        $content = ob_get_contents();
+        ob_end_clean();
+
+        $filePath = $directory . "/{$className}.php";
+
+        if (is_file($filePath)) {
+            throw new Exception("The {$commandOption} already exists!");
+        }
+
+        $file = fopen($filePath, 'w+');
+
+        file_put_contents($filePath, $content);
+        fclose($file);
+
+        echo PHP_EOL . 'SUCCESS!' . PHP_EOL;
+    } catch (\Exception $exception) {
+        echo PHP_EOL . 'ERROR: ' . $exception->getMessage() . PHP_EOL;
+    }
+}
