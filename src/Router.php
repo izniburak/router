@@ -58,6 +58,16 @@ class Router
     protected $groups = [];
 
     /**
+     * @var array List of error group routes
+     */
+    protected $errorGroupNames = [];
+
+    /**
+     * @var string Error group of requested page
+     */
+    protected $currentErrorGroupName = '/';
+
+    /**
      * @var array $patterns Pattern definitions for parameters of Route
      */
     protected $patterns = [
@@ -128,7 +138,7 @@ class Router
     /**
      * @var RouterRequest
      */
-    private $request;
+    public $request;
 
     /**
      * Router constructor method.
@@ -324,7 +334,14 @@ class Router
                     return $this->exception('Looks like page not found or something went wrong. Please try again.');
                 };
             }
-            call_user_func($this->errorCallback);
+
+            foreach ($this->errorGroupNames as $key => $item) {
+                if (str_starts_with($this->getRequestUri(), $item))
+                    $groupKey = $key;
+            }
+            if (isset($groupKey))
+                $this->currentErrorGroupName = $this->errorGroupNames[$groupKey];
+            $this->routerCommand()->runRoute($this->errorCallback[$this->currentErrorGroupName]);
         }
     }
 
@@ -349,6 +366,8 @@ class Router
         $group['after'] = $this->calculateMiddleware($options['after'] ?? []);
 
         array_push($this->groups, $group);
+        
+        $this->getErrorGroupNames();
 
         if (is_object($callback)) {
             call_user_func_array($callback, [$this]);
@@ -359,6 +378,19 @@ class Router
         return true;
     }
 
+    /**
+     * Gets errors generated under group
+     *
+     */
+    public function getErrorGroupNames()
+    {
+        $group = '';
+        foreach ($this->groups as $item) {
+            $group .= $item['route'];
+        }
+        $this->errorGroupNames[] = $group.'/';
+    }
+    
     /**
      * Added route from methods of Controller file.
      *
@@ -428,13 +460,23 @@ class Router
     /**
      * Routes error function.
      *
-     * @param Closure $callback
+     * @param $callback
+     * @param array $options
      *
      * @return void
      */
-    public function error(Closure $callback): void
+    public function error($callback,array $options = []): void
     {
-        $this->errorCallback = $callback;
+        if (isset($options['prefix'])) {
+            $prefix = $options['prefix'];
+            $this->errorGroupNames[] = $prefix.'/';
+        } else {
+            $prefix = '';
+            foreach ($this->groups as $item) {
+                $prefix .= $item['route'];
+            }
+        }
+        $this->errorCallback[$prefix.'/'] = $callback;
     }
 
     /**
