@@ -326,6 +326,13 @@ class Router
         }
 
         if ($foundRoute === false) {
+            foreach ($this->errorGroupNames as $key => $item) {
+                if (str_starts_with($this->getRequestUri(), $item))
+                    $groupKey = $key;
+            }
+            if (isset($groupKey))
+                $this->currentErrorGroupName = $this->errorGroupNames[$groupKey];
+
             if (!isset($this->errorCallback[$this->currentErrorGroupName])) {
                 $this->errorCallback['/'] = function () {
                     $this->response()
@@ -333,14 +340,8 @@ class Router
                         ->sendHeaders();
                     return $this->exception('Looks like page not found or something went wrong. Please try again.');
                 };
+                $this->currentErrorGroupName = '/';
             }
-
-            foreach ($this->errorGroupNames as $key => $item) {
-                if (str_starts_with($this->getRequestUri(), $item))
-                    $groupKey = $key;
-            }
-            if (isset($groupKey))
-                $this->currentErrorGroupName = $this->errorGroupNames[$groupKey];
             $this->routerCommand()->runRoute($this->errorCallback[$this->currentErrorGroupName]);
         }
     }
