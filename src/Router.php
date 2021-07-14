@@ -326,8 +326,8 @@ class Router
         }
 
         if ($foundRoute === false) {
-            if (!$this->errorCallback) {
-                $this->errorCallback = function () {
+            if (!isset($this->errorCallback[$this->currentErrorGroupName])) {
+                $this->errorCallback['/'] = function () {
                     $this->response()
                         ->setStatusCode(Response::HTTP_NOT_FOUND)
                         ->sendHeaders();
