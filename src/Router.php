@@ -138,7 +138,7 @@ class Router
     /**
      * @var RouterRequest
      */
-    protected $request;
+    private $request;
 
     /**
      * Router constructor method.
