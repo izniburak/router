@@ -326,23 +326,7 @@ class Router
         }
 
         if ($foundRoute === false) {
-            foreach ($this->errorGroupNames as $key => $item) {
-                if (str_starts_with($this->getRequestUri(), $item))
-                    $groupKey = $key;
-            }
-            if (isset($groupKey))
-                $this->currentErrorGroupName = $this->errorGroupNames[$groupKey];
-
-            if (!isset($this->errorCallback[$this->currentErrorGroupName])) {
-                $this->errorCallback['/'] = function () {
-                    $this->response()
-                        ->setStatusCode(Response::HTTP_NOT_FOUND)
-                        ->sendHeaders();
-                    return $this->exception('Looks like page not found or something went wrong. Please try again.');
-                };
-                $this->currentErrorGroupName = '/';
-            }
-            $this->routerCommand()->runRoute($this->errorCallback[$this->currentErrorGroupName]);
+            $this->notFoundRoute();
         }
     }
 
@@ -367,7 +351,7 @@ class Router
         $group['after'] = $this->calculateMiddleware($options['after'] ?? []);
 
         array_push($this->groups, $group);
-        
+
         $this->getErrorGroupNames();
 
         if (is_object($callback)) {
@@ -379,19 +363,6 @@ class Router
         return true;
     }
 
-    /**
-     * Gets errors generated under group
-     *
-     */
-    public function getErrorGroupNames()
-    {
-        $group = '';
-        foreach ($this->groups as $item) {
-            $group .= $item['route'];
-        }
-        $this->errorGroupNames[] = $group.'/';
-    }
-    
     /**
      * Added route from methods of Controller file.
      *
@@ -572,6 +543,44 @@ class Router
             'routeMiddlewares' => $this->routeMiddlewares,
             'middlewareGroups' => $this->middlewareGroups,
         ];
+    }
+
+    /**
+     * Gets errors generated under group
+     *
+     * @return void
+     */
+    protected function getErrorGroupNames()
+    {
+        $group = '';
+        foreach ($this->groups as $item) {
+            $group .= $item['route'];
+        }
+        $this->errorGroupNames[] = $group.'/';
+    }
+
+    protected function notFoundRoute()
+    {
+        foreach ($this->errorGroupNames as $key => $item) {
+            if (str_starts_with($this->getRequestUri(), $item))
+                $groupKey = $key;
+        }
+        if (isset($groupKey))
+            $this->currentErrorGroupName = $this->errorGroupNames[$groupKey];
+
+        if (!isset($this->errorCallback[$this->currentErrorGroupName])) {
+            if (!isset($this->errorCallback['/']))
+                $this->errorCallback['/'] = function () {
+                    $this->response()
+                        ->setStatusCode(Response::HTTP_NOT_FOUND)
+                        ->sendHeaders();
+                    return $this->exception('Looks like page not found or something went wrong. Please try again.');
+                };
+            $this->currentErrorGroupName = '/';
+        }
+        
+        $this->response()->setStatusCode(Response::HTTP_NOT_FOUND)->sendHeaders();
+        $this->routerCommand()->runRoute($this->errorCallback[$this->currentErrorGroupName]);
     }
 
     /**
